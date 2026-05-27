@@ -55,6 +55,18 @@ const CompSchema = z.object({
   anchor_role: z.string().optional(),
 });
 
+const AgentSchema = z.object({
+  name: z.string().min(1),
+  title: z.string().min(1).optional(),
+  phone: z.string().min(1).optional(),
+  email: z.string().min(1).optional(),
+  license_number: z.string().min(1).optional(),
+  headshot_data_url: z
+    .string()
+    .regex(/^data:image\/(jpeg|jpg|png|webp);base64,/, "headshot_data_url must be a data:image/...;base64,... URL")
+    .optional(),
+});
+
 export const ValuationInputSchema = z
   .object({
     subject: SubjectSchema,
@@ -65,6 +77,7 @@ export const ValuationInputSchema = z
     comps: z.array(CompSchema).min(3).max(8),
     constraints: z.array(z.string()).default([]),
     important_market_context: z.string().min(1),
+    agent: AgentSchema.optional(),
   })
   .superRefine((data, ctx) => {
     const tiers = data.scenarios.map((s) => s.tier).sort();

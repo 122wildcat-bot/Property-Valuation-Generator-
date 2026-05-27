@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { SYSTEM_PROMPT } from "./system-prompt";
+import { buildSystemPrompt } from "./system-prompt";
 import type { ValuationInput } from "./schema";
 
 const DEFAULT_MODEL = "claude-opus-4-7";
@@ -39,7 +39,7 @@ Return ONLY the HTML document. Begin with <!DOCTYPE html> and end with </html>. 
   const response = await anthropic.messages.create({
     model,
     max_tokens: 16000,
-    system: SYSTEM_PROMPT,
+    system: buildSystemPrompt(input.agent),
     messages: [{ role: "user", content: userMessage }],
   });
 
