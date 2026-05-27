@@ -1,6 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+const NAVY = "#0a2540";
+const GOLD = "#c9a961";
+const CREAM = "#faf8f4";
+const INK = "#1a1a1a";
+const MUTED = "#6b6356";
+const RULE = "#e3ddd0";
+const ERROR = "#a02020";
+const SUCCESS = "#1a6b3a";
 
 const SAMPLE_JSON = `{
   "subject": {
@@ -37,23 +46,46 @@ const SAMPLE_JSON = `{
 
 type Status =
   | { kind: "idle" }
-  | { kind: "loading" }
+  | { kind: "loading"; startedAt: number }
   | { kind: "error"; message: string }
-  | { kind: "success" };
+  | { kind: "success"; filename: string };
+
+const SERIF: React.CSSProperties = {
+  fontFamily: "var(--font-serif), Georgia, serif",
+  fontStyle: "italic",
+  fontWeight: 500,
+};
 
 export default function Home() {
   const [json, setJson] = useState(SAMPLE_JSON);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const [elapsed, setElapsed] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (status.kind === "loading") {
+      setElapsed(0);
+      const started = status.startedAt;
+      intervalRef.current = setInterval(() => {
+        setElapsed(Math.floor((Date.now() - started) / 1000));
+      }, 250);
+      return () => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+      };
+    }
+    return undefined;
+  }, [status]);
 
   async function submit(format: "pdf" | "html") {
-    setStatus({ kind: "loading" });
     let body: unknown;
     try {
       body = JSON.parse(json);
     } catch (e) {
-      setStatus({ kind: "error", message: "JSON is not valid: " + (e as Error).message });
+      setStatus({ kind: "error", message: "Input JSON is not valid: " + (e as Error).message });
       return;
     }
+
+    setStatus({ kind: "loading", startedAt: Date.now() });
 
     try {
       const url = format === "html" ? "/api/generate?format=html" : "/api/generate";
@@ -65,7 +97,15 @@ export default function Home() {
 
       if (!res.ok) {
         const text = await res.text();
-        setStatus({ kind: "error", message: `${res.status}: ${text}` });
+        let message = `${res.status} ${res.statusText}`;
+        try {
+          const j = JSON.parse(text);
+          if (j.error) message = `${res.status}: ${j.error}`;
+          if (j.issues) message += ` — ${j.issues.length} validation issue(s)`;
+        } catch {
+          message = text.slice(0, 300);
+        }
+        setStatus({ kind: "error", message });
         return;
       }
 
@@ -74,6 +114,7 @@ export default function Home() {
         const blob = new Blob([html], { type: "text/html" });
         const blobUrl = URL.createObjectURL(blob);
         window.open(blobUrl, "_blank");
+        setStatus({ kind: "success", filename: "preview.html" });
       } else {
         const blob = await res.blob();
         const blobUrl = URL.createObjectURL(blob);
@@ -85,106 +126,380 @@ export default function Home() {
         a.download = filename;
         a.click();
         URL.revokeObjectURL(blobUrl);
+        setStatus({ kind: "success", filename });
       }
-      setStatus({ kind: "success" });
     } catch (e) {
       setStatus({ kind: "error", message: (e as Error).message });
     }
   }
 
+  const loading = status.kind === "loading";
+  const stage =
+    elapsed < 2
+      ? "Validating input…"
+      : elapsed < 50
+        ? "Generating report with Claude…"
+        : "Rendering PDF…";
+
   return (
-    <main style={{ maxWidth: 960, margin: "0 auto", padding: "48px 24px" }}>
-      <header style={{ marginBottom: 24 }}>
-        <div
-          style={{
-            letterSpacing: "0.18em",
-            fontSize: 12,
-            color: "#0a2540",
-            fontWeight: 600,
-          }}
-        >
-          ADAM DRUCK GROUP · INTERNAL
-        </div>
-        <h1
-          style={{
-            fontFamily: "Georgia, 'Cormorant Garamond', serif",
-            fontStyle: "italic",
-            fontWeight: 500,
-            fontSize: 40,
-            color: "#0a2540",
-            margin: "8px 0 0",
-          }}
-        >
-          Property Valuation Report Generator.
-        </h1>
-        <p style={{ color: "#555", marginTop: 8 }}>
-          Paste MVE JSON output below. Download a branded PDF or preview the HTML.
-        </p>
-      </header>
-
-      <textarea
-        value={json}
-        onChange={(e) => setJson(e.target.value)}
-        spellCheck={false}
+    <main style={{ minHeight: "100vh", background: CREAM }}>
+      {/* Brand strip */}
+      <div
         style={{
-          width: "100%",
-          minHeight: 480,
-          padding: 16,
-          fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-          fontSize: 12,
-          lineHeight: 1.5,
-          background: "#fff",
-          border: "1px solid #d8d2c4",
-          borderRadius: 4,
-          resize: "vertical",
-          color: "#1a1a1a",
+          background: NAVY,
+          color: CREAM,
+          padding: "10px 24px",
+          letterSpacing: "0.22em",
+          fontSize: 11,
+          fontWeight: 600,
+          textAlign: "center",
         }}
-      />
+      >
+        COLDWELL BANKER REALTY · THE ADAM DRUCK GROUP
+      </div>
 
-      <div style={{ display: "flex", gap: 12, marginTop: 16, alignItems: "center" }}>
-        <button
-          onClick={() => submit("pdf")}
-          disabled={status.kind === "loading"}
+      <div style={{ maxWidth: 980, margin: "0 auto", padding: "48px 24px 96px" }}>
+        {/* Header */}
+        <header style={{ marginBottom: 40 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              color: GOLD,
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.22em",
+              marginBottom: 12,
+            }}
+          >
+            <span
+              style={{
+                display: "inline-block",
+                width: 32,
+                height: 1,
+                background: GOLD,
+              }}
+            />
+            PVRG · INTERNAL TEST HARNESS
+          </div>
+          <h1
+            style={{
+              ...SERIF,
+              fontSize: 56,
+              color: NAVY,
+              margin: 0,
+              lineHeight: 1.05,
+              letterSpacing: "-0.01em",
+            }}
+          >
+            Property Valuation Report Generator.
+          </h1>
+          <p
+            style={{
+              color: MUTED,
+              fontSize: 16,
+              lineHeight: 1.5,
+              maxWidth: 680,
+              marginTop: 16,
+            }}
+          >
+            The production pipeline runs <strong style={{ color: INK }}>MVE → POST /api/generate →
+            branded PDF</strong>. This page tests that pipeline end-to-end against the 1508 Stanton
+            St sample. The form below is prefilled — just click <strong style={{ color: INK }}>Generate
+            sample PDF</strong>.
+          </p>
+        </header>
+
+        {/* Primary action card */}
+        <section
           style={{
-            background: "#0a2540",
-            color: "#faf8f4",
-            border: "none",
-            padding: "12px 24px",
-            fontSize: 14,
-            fontWeight: 600,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            cursor: status.kind === "loading" ? "wait" : "pointer",
-            borderRadius: 2,
+            background: "#fff",
+            border: `1px solid ${RULE}`,
+            borderTop: `3px solid ${GOLD}`,
+            padding: "28px 32px",
+            marginBottom: 32,
+            boxShadow: "0 1px 0 rgba(10, 37, 64, 0.04)",
           }}
         >
-          {status.kind === "loading" ? "Generating…" : "Download PDF"}
-        </button>
-        <button
-          onClick={() => submit("html")}
-          disabled={status.kind === "loading"}
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 24,
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+            }}
+          >
+            <div style={{ flex: "1 1 280px" }}>
+              <div
+                style={{
+                  ...SERIF,
+                  fontSize: 26,
+                  color: NAVY,
+                  marginBottom: 6,
+                }}
+              >
+                Run the pipeline.
+              </div>
+              <div style={{ color: MUTED, fontSize: 14, lineHeight: 1.5 }}>
+                Sends the input JSON to <code style={codeInlineStyle}>/api/generate</code>. Takes
+                30–60 seconds. The PDF downloads automatically when it's ready.
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
+              <button
+                onClick={() => submit("pdf")}
+                disabled={loading}
+                style={primaryButtonStyle(loading)}
+              >
+                {loading ? "Generating…" : "Generate sample PDF"}
+              </button>
+              <button
+                onClick={() => submit("html")}
+                disabled={loading}
+                style={secondaryButtonStyle(loading)}
+              >
+                Preview HTML
+              </button>
+            </div>
+          </div>
+
+          {/* Status row */}
+          {loading && (
+            <div
+              style={{
+                marginTop: 20,
+                padding: "14px 16px",
+                background: CREAM,
+                border: `1px solid ${RULE}`,
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+              }}
+            >
+              <Spinner />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: NAVY }}>{stage}</div>
+                <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>
+                  {elapsed}s elapsed · this typically takes 30–60s
+                </div>
+              </div>
+            </div>
+          )}
+          {status.kind === "success" && (
+            <div
+              style={{
+                marginTop: 20,
+                padding: "12px 16px",
+                background: "#eef7f1",
+                border: `1px solid #bcdcc7`,
+                color: SUCCESS,
+                fontSize: 14,
+              }}
+            >
+              ✓ Done. <code style={codeInlineStyle}>{status.filename}</code> downloaded.
+            </div>
+          )}
+          {status.kind === "error" && (
+            <div
+              style={{
+                marginTop: 20,
+                padding: "12px 16px",
+                background: "#fbecec",
+                border: `1px solid #e5b8b8`,
+                color: ERROR,
+                fontSize: 14,
+                lineHeight: 1.5,
+              }}
+            >
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>Request failed.</div>
+              <div style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12 }}>
+                {status.message}
+              </div>
+              {status.message.includes("ANTHROPIC_API_KEY") && (
+                <div style={{ marginTop: 8, color: INK }}>
+                  Set <code style={codeInlineStyle}>ANTHROPIC_API_KEY</code> in your Railway service
+                  variables, then redeploy.
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* Input JSON */}
+        <section>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "baseline",
+              justifyContent: "space-between",
+              marginBottom: 10,
+            }}
+          >
+            <h2
+              style={{
+                ...SERIF,
+                fontSize: 22,
+                color: NAVY,
+                margin: 0,
+              }}
+            >
+              Input JSON.
+            </h2>
+            <button
+              onClick={() => setJson(SAMPLE_JSON)}
+              style={{
+                background: "transparent",
+                color: MUTED,
+                border: "none",
+                fontSize: 12,
+                fontWeight: 600,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                cursor: "pointer",
+                padding: 0,
+              }}
+            >
+              Reset to sample ↻
+            </button>
+          </div>
+          <div style={{ fontSize: 13, color: MUTED, marginBottom: 12, lineHeight: 1.5 }}>
+            This is the MVE → PVRG data contract. In production, MVE produces this object and POSTs
+            it directly. Edit here to test other inputs.
+          </div>
+          <textarea
+            value={json}
+            onChange={(e) => setJson(e.target.value)}
+            spellCheck={false}
+            style={{
+              width: "100%",
+              minHeight: 420,
+              padding: 16,
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+              fontSize: 12,
+              lineHeight: 1.55,
+              background: "#fff",
+              border: `1px solid ${RULE}`,
+              borderRadius: 0,
+              resize: "vertical",
+              color: INK,
+              boxSizing: "border-box",
+            }}
+          />
+        </section>
+
+        {/* API quick-ref */}
+        <section style={{ marginTop: 48 }}>
+          <h2
+            style={{
+              ...SERIF,
+              fontSize: 22,
+              color: NAVY,
+              margin: "0 0 12px",
+            }}
+          >
+            For MVE integration.
+          </h2>
+          <pre
+            style={{
+              background: NAVY,
+              color: CREAM,
+              padding: "18px 20px",
+              fontSize: 12,
+              lineHeight: 1.6,
+              overflowX: "auto",
+              margin: 0,
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+            }}
+          >
+            {`POST /api/generate
+Content-Type: application/json
+
+{ ...valuation input JSON... }
+
+→ 200 application/pdf   (download)
+→ 200 text/html         (when ?format=html)
+→ 400 { error, issues } (validation failed)
+→ 502 { error }         (Claude API failed)`}
+          </pre>
+        </section>
+
+        <footer
           style={{
-            background: "transparent",
-            color: "#0a2540",
-            border: "1px solid #0a2540",
-            padding: "12px 24px",
-            fontSize: 14,
-            fontWeight: 600,
-            letterSpacing: "0.08em",
+            marginTop: 64,
+            paddingTop: 24,
+            borderTop: `1px solid ${RULE}`,
+            color: MUTED,
+            fontSize: 11,
+            letterSpacing: "0.12em",
             textTransform: "uppercase",
-            cursor: status.kind === "loading" ? "wait" : "pointer",
-            borderRadius: 2,
+            textAlign: "center",
           }}
         >
-          Preview HTML
-        </button>
-        {status.kind === "success" && (
-          <span style={{ color: "#1a6b3a", fontSize: 14 }}>Done.</span>
-        )}
-        {status.kind === "error" && (
-          <span style={{ color: "#a02020", fontSize: 14 }}>{status.message}</span>
-        )}
+          ADAM DRUCK · REALTOR® · (717) 487-2579 · YourRealtorAdamD@gmail.com · adamdruckgroup.com
+        </footer>
       </div>
     </main>
+  );
+}
+
+const codeInlineStyle: React.CSSProperties = {
+  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+  fontSize: "0.9em",
+  background: "rgba(10, 37, 64, 0.06)",
+  padding: "1px 6px",
+  borderRadius: 2,
+  color: NAVY,
+};
+
+function primaryButtonStyle(loading: boolean): React.CSSProperties {
+  return {
+    background: loading ? "#3a4d62" : NAVY,
+    color: CREAM,
+    border: "none",
+    padding: "14px 24px",
+    fontSize: 13,
+    fontWeight: 600,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase",
+    cursor: loading ? "wait" : "pointer",
+    borderRadius: 2,
+    transition: "background 120ms ease",
+  };
+}
+
+function secondaryButtonStyle(loading: boolean): React.CSSProperties {
+  return {
+    background: "transparent",
+    color: NAVY,
+    border: `1px solid ${NAVY}`,
+    padding: "14px 22px",
+    fontSize: 13,
+    fontWeight: 600,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase",
+    cursor: loading ? "wait" : "pointer",
+    borderRadius: 2,
+    opacity: loading ? 0.5 : 1,
+  };
+}
+
+function Spinner() {
+  return (
+    <>
+      <style>{`@keyframes pvrg-spin { to { transform: rotate(360deg); } }`}</style>
+      <div
+        style={{
+          width: 18,
+          height: 18,
+          border: `2px solid ${RULE}`,
+          borderTopColor: GOLD,
+          borderRadius: "50%",
+          animation: "pvrg-spin 700ms linear infinite",
+          flexShrink: 0,
+        }}
+      />
+    </>
   );
 }
