@@ -66,15 +66,19 @@ Return ONLY the HTML document. Begin with <!DOCTYPE html> and end with </html>. 
   // and a 90% cost discount on the cached tokens.
   const systemPrompt = buildSystemPrompt(input.agent);
   const t0 = Date.now();
-  const response = await anthropic.messages.create({
+  // Use streaming. The Anthropic SDK requires streaming for any request
+  // where max_tokens is large enough that the response *could* take >10
+  // minutes; at our 24K cap it would refuse a plain messages.create() call
+  // with "Streaming is required for operations that may take longer than
+  // 10 minutes". The actual user-facing behavior is unchanged — we await
+  // finalMessage() and treat the assembled result identically.
+  const stream = anthropic.messages.stream({
     model,
-    // 24K gives comfortable headroom for top-notch reports with 8 comps,
-    // long condition notes, and fully fleshed-out narrative paragraphs.
-    // Sonnet 4.6 supports up to 64K output, so this is well within limits.
     max_tokens: 24000,
     system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: userMessage }],
   });
+  const response = await stream.finalMessage();
   const elapsedMs = Date.now() - t0;
   const u = response.usage;
   console.log(
