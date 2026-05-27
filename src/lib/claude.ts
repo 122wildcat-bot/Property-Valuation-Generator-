@@ -12,7 +12,11 @@ function getClient(): Anthropic {
   if (!apiKey) {
     throw new Error("ANTHROPIC_API_KEY is not set");
   }
-  client = new Anthropic({ apiKey });
+  // maxRetries=0: don't silently retry on slow / overloaded responses.
+  // The route handler has its own 300s budget and the calling MVE has its
+  // own retry policy — letting the SDK retry on top of that turns a 60s
+  // hiccup into a 3-minute wall-time stall.
+  client = new Anthropic({ apiKey, maxRetries: 0 });
   return client;
 }
 
@@ -36,10 +40,15 @@ ${JSON.stringify(input, null, 2)}
 
 Return ONLY the HTML document. Begin with <!DOCTYPE html> and end with </html>. No prose, no code fences.`;
 
+  // Prompt caching on the system prompt: the prompt is ~4 KB and stable
+  // per-agent, so a 5-minute ephemeral cache gives subsequent calls
+  // (back-to-back report regenerations, retries) a meaningful speedup
+  // and a 90% cost discount on the cached tokens.
+  const systemPrompt = buildSystemPrompt(input.agent);
   const response = await anthropic.messages.create({
     model,
-    max_tokens: 16000,
-    system: buildSystemPrompt(input.agent),
+    max_tokens: 12000,
+    system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: userMessage }],
   });
 

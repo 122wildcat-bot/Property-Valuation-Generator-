@@ -39,7 +39,11 @@ export async function renderHtmlToPdf(html: string): Promise<Buffer> {
   const browser = await getBrowser();
   const page = await browser.newPage();
   try {
-    await page.setContent(html, { waitUntil: "networkidle0" });
+    // networkidle0 would block until *every* network request settles —
+    // a single slow Google Fonts response can add 10–30s to the render.
+    // networkidle2 (≤2 in-flight requests) is enough for our use case;
+    // the 15s ceiling guarantees we move on if a font CDN is down.
+    await page.setContent(html, { waitUntil: "networkidle2", timeout: 15000 });
     await page.emulateMediaType("print");
     const pdf = await page.pdf({
       format: "letter",
