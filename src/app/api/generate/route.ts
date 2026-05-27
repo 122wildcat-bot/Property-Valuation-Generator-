@@ -46,32 +46,45 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const tTotal = Date.now();
+
+  const tClaude = Date.now();
   let html: string;
   try {
     html = await generateReportHtml(parsed.data);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Claude generation failed";
+    console.error(`[generate] claude failed after ${Date.now() - tClaude}ms: ${message}`);
     return NextResponse.json({ error: message }, { status: 502 });
   }
+  const claudeMs = Date.now() - tClaude;
 
   const format = req.nextUrl.searchParams.get("format");
   if (format === "html") {
+    console.log(`[generate] html-only claude=${claudeMs}ms total=${Date.now() - tTotal}ms`);
     return new NextResponse(html, {
       status: 200,
       headers: { "Content-Type": "text/html; charset=utf-8" },
     });
   }
 
+  const tPdf = Date.now();
   let pdf: Buffer;
   try {
     pdf = await renderHtmlToPdf(html);
   } catch (err) {
     const message = err instanceof Error ? err.message : "PDF rendering failed";
+    console.error(`[generate] pdf failed after ${Date.now() - tPdf}ms: ${message}`);
     return NextResponse.json({ error: message }, { status: 500 });
   }
+  const pdfMs = Date.now() - tPdf;
 
   const slug = slugifyAddress(parsed.data.subject.address.street);
   const filename = `ADG_Valuation_${slug}.pdf`;
+  console.log(
+    `[generate] claude=${claudeMs}ms pdf=${pdfMs}ms total=${Date.now() - tTotal}ms ` +
+      `html_size=${html.length} pdf_size=${pdf.length}`,
+  );
 
   return new NextResponse(new Uint8Array(pdf), {
     status: 200,
