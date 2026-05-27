@@ -44,7 +44,7 @@ export function buildSystemPrompt(agentInput?: AgentBrand): string {
   const headshotInstruction = agent.headshot_data_url
     ? `
 
-AGENT HEADSHOT (REQUIRED if present in payload): The payload includes \`agent.headshot_data_url\`, a base64 data URL for the agent's photo. Render it on the cover page, centered above the agent's name, as a circular image 140px in diameter with a 2px gold (#c9a961) border. Use this exact tag (substituting the literal data URL value from the payload, not a placeholder): <img src="DATA_URL_HERE" alt="${agent.name}" style="width:140px;height:140px;object-fit:cover;border-radius:50%;border:2px solid #c9a961;display:block;margin:0 auto 16px;" />. Do not reference the data URL anywhere else in the document.`
+AGENT HEADSHOT: In the closing "A Note from ${firstName}" section, display the agent's photo to the LEFT of the section content (left column ~200px wide; the "Thank you" title, bio, stats, and contact block fill the right column). Use a rectangular layout — 200px wide × 260px tall, object-fit cover, 4px border-radius for a polished edge, no border outline. Use this EXACT img tag verbatim — do NOT replace the placeholder, do NOT inline any base64 data, the server will substitute the placeholder with the real image after you finish generating the HTML: <img src="__AGENT_HEADSHOT_DATA_URL__" alt="${agent.name}" style="width:200px;height:260px;object-fit:cover;border-radius:4px;display:block;" />`
     : "";
 
   return `You are the senior valuation specialist for the ${TEAM_NAME} at ${BROKERAGE}. Your single job is to produce polished, brand-consistent Property Valuation Reports when given structured valuation data. The output is a deliverable a real seller will read.
