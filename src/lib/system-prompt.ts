@@ -53,7 +53,15 @@ Return a complete, self-contained HTML document starting with <!DOCTYPE html> an
 
 Required structure (in order):
 
-1. Cover page — "${TEAM_HEADER}" header · "${agent.name}." (italic serif) · "${agent.title} · THE ${TEAM_NAME.toUpperCase()}" · title "PROPERTY VALUATION REPORT" · subtitle "A Confidential Opinion of Value." · address with municipality and school district · stat block (beds · baths · sqft · structure type) · "Prepared by ${agent.name}, ${agent.title}" · report date.
+1. Cover page — FULL NAVY BACKGROUND (entire page filled with #0a2540, no white card or inner panel). Text in white or gold #c9a961. Sequence top-to-bottom:
+   - "${TEAM_HEADER}" header in small caps, gold, letter-spaced (near top, centered or top-left).
+   - The agent's name in large display: "${agent.name}." with the SURNAME in italic Cormorant Garamond gold and the first name in white sans-serif (e.g. "Adam Druck." where "Druck" is the gold italic).
+   - "${agent.title} · THE ${TEAM_NAME.toUpperCase()}" in small caps white below.
+   - Thin gold divider.
+   - "PROPERTY VALUATION REPORT" in small caps white, then "A Confidential Opinion of Value." with "Opinion of Value" set in gold italic serif.
+   - Subject address: street line large, city/state/zip on next line, "Municipality · School District" below.
+   - Stat block as a single horizontal row of 4-5 stats. EACH stat shows the LARGE NUMBER on top (display sans-serif or serif italic, white) and a SMALL UPPERCASE LABEL below (gold, letter-spaced). Show bathrooms as a SINGLE DECIMAL ("2.5 BATHROOMS"), computed as baths_full + baths_half/2. NEVER use "2 / 1 FULL/HALF BATHS" or any diagonal-slash formatting. Stats to include: BEDROOMS · BATHROOMS · SQUARE FEET · YEAR BUILT (if known, otherwise STRUCTURE TYPE).
+   - "Prepared by ${agent.name}, ${agent.title}" and the report date toward the bottom.
 
 2. Executive Summary — header "A market-driven look at value." · framing sentence about the three condition-based scenarios · "Recommended List Price" block with headline figure, scenario it reflects, defensible bracket ±5–6%, as-is value as floor reference · 2–3 narrative paragraphs covering why the comp pool was restricted, current market bracket from comps, binding constraints/headwinds, and one "important market context" callout.
 
@@ -86,13 +94,16 @@ Valuation conventions:
 - Anchor every scenario to a specific comp ("anchored to 44 N Clinton's trajectory", "applying 1626 W Philadelphia's $/sqft and adjusting for the missing garage").
 
 Brand & layout:
-- Primary navy #0a2540. Warm gold #c9a961. Body #1a1a1a on warm off-white #faf8f4.
+- Cover page: navy #0a2540 fills the ENTIRE page (no white inner panel). All cover text in white or gold #c9a961.
+- All other sections (2–7): warm off-white #faf8f4 background, body text #1a1a1a, navy headers, gold accents.
 - Serif italic for section titles: 'Cormorant Garamond' from Google Fonts.
-- Body: 'Inter' from Google Fonts.
-- Each section (2–6) starts on a fresh page via page-break-before: always.
+- Body: 'Inter' from Google Fonts. Body size 11pt, line-height 1.5. Tight section spacing (24–32pt between blocks, not 60+).
+- Each section (2–6) starts on a fresh page via page-break-before: always. Section 7 (Note from ${firstName}) also starts on a fresh page.
+- CRITICAL page-break-inside rules — apply page-break-inside: avoid AND break-inside: avoid to every one of: each scenario card in Section 5 (so the Top-of-Market header never orphans from its body), the comp table in Section 4, the Walk-Through Priorities block in Section 6, every callout box ("Important Market Context", "Ceiling Caution", "Comp Pool Discipline", "Confidence Note").
+- Do NOT pad short sections with min-height, large bottom margins, or empty spacer divs trying to fill the page. If a section is shorter than the page, that's fine — the trailing whitespace is a natural consequence of page-break-before. Never use min-height: 100vh, vh units, or aspect-ratio tricks on section containers.
 - ADG monogram in gold in section headers.
 - Section-page footer (every section): "${pageFooter}"
-- Editorial aesthetic. Generous whitespace. Not Zillow, not corporate template — closer to a private wealth report.
+- Editorial aesthetic. Tight, dense, confident layout. Not Zillow, not corporate template — closer to a private wealth report.
 
 Don't: propose marketing/listing prep/buyer-presentation content (out of scope) · pad with generic real estate advice · confuse this with a CMA (different conventions) · invent data not in the input · wrap output in markdown code fences · invent biographical details about the agent that aren't in the payload.${headshotInstruction}`;
 }
