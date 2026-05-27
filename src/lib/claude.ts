@@ -68,7 +68,11 @@ Return ONLY the HTML document. Begin with <!DOCTYPE html> and end with </html>. 
   const t0 = Date.now();
   const response = await anthropic.messages.create({
     model,
-    max_tokens: 12000,
+    // The full 7-section report runs ~10-13K tokens. 16000 gives comfortable
+    // headroom for reports with the max 8 comps + long condition notes;
+    // anything tighter and Claude gets truncated mid-document and the
+    // closing sections never render.
+    max_tokens: 16000,
     system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: userMessage }],
   });
