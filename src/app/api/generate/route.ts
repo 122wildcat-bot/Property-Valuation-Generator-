@@ -6,7 +6,31 @@ import { renderHtmlToPdf } from "@/lib/pdf";
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
+// Same-origin requests (the admin form at `/`) are allowed unauthenticated;
+// cross-origin / server-to-server callers (MVE) must present the Bearer token
+// when PVRG_API_KEY is configured. With no key set, the endpoint is open —
+// only acceptable for local dev.
+function isSameOrigin(req: NextRequest): boolean {
+  const origin = req.headers.get("origin");
+  const host = req.headers.get("host");
+  if (!origin || !host) return false;
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(req: NextRequest) {
+  const expectedKey = process.env.PVRG_API_KEY;
+  if (expectedKey && !isSameOrigin(req)) {
+    const auth = req.headers.get("authorization") || "";
+    const provided = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+    if (provided !== expectedKey) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
+
   let body: unknown;
   try {
     body = await req.json();
