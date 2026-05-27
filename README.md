@@ -41,17 +41,25 @@ Request body: a JSON object matching the data contract below.
 Query params:
 - `format=html` — return the raw HTML instead of rendering to PDF (debug/preview).
 
+Auth:
+- When `PVRG_API_KEY` is set, cross-origin / server-to-server callers must send
+  `Authorization: Bearer <PVRG_API_KEY>`. Same-origin requests from the admin
+  form at `/` pass through unauthenticated.
+- When `PVRG_API_KEY` is unset, the endpoint is open — local dev only.
+
 Responses:
 - `200 application/pdf` — the rendered report, with `Content-Disposition: attachment`
 - `200 text/html` — when `?format=html`
 - `400` — JSON parse error or Zod validation failure (`{ error, issues }`)
+- `401` — missing or wrong Bearer token (cross-origin call with `PVRG_API_KEY` set)
 - `502` — Claude API call failed
 - `500` — Puppeteer rendering failed
 
 Example:
 
 ```bash
-curl -X POST http://localhost:3000/api/generate \
+curl -X POST https://<pvrg>.up.railway.app/api/generate \
+  -H 'Authorization: Bearer <PVRG_API_KEY>' \
   -H 'Content-Type: application/json' \
   -d @sample.json \
   -o report.pdf
@@ -131,18 +139,23 @@ The system prompt is the single source of truth for layout and voice. Iterate on
 
 ## Railway deploy
 
-The same Railway project as MVE so they share private networking.
+PVRG runs as its own Railway project so it can be reused by other tools
+besides MVE. MVE reaches it over the public HTTPS URL Railway assigns the
+service (`https://<service>.up.railway.app`) with a shared-secret API key.
 
 1. Push to the branch Railway watches.
 2. Railway picks up `railway.toml` → builds from `Dockerfile`.
 3. Set env vars in the Railway service:
    - `ANTHROPIC_API_KEY` (required)
    - `ANTHROPIC_MODEL` (optional — defaults to `claude-opus-4-7`)
+   - `PVRG_API_KEY` (required for any service-to-service caller) — generate
+     a random secret (`openssl rand -hex 32`) and set the same value on the
+     MVE service so the two match.
 4. `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium` is set inside the Dockerfile — don't override.
+5. In the Railway service settings, enable a **public domain** so MVE (and
+   anything else) can reach PVRG over HTTPS.
 
 The Dockerfile installs system Chromium + the fonts/libs Puppeteer needs and runs Next.js in `standalone` output mode under a non-root user with `dumb-init` as PID 1.
-
-MVE can call PVRG over Railway's private network at `http://<pvrg-service>.railway.internal:3000/api/generate`.
 
 ---
 
