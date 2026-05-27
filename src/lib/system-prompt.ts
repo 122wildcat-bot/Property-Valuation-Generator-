@@ -105,6 +105,87 @@ Brand & layout:
 - Section-page footer (every section): "${pageFooter}"
 - Editorial aesthetic. Tight, dense, confident layout. Not Zillow, not corporate template — closer to a private wealth report.
 
+Visual specifications (apply these consistently, no improvising):
+
+@page rule: \`@page { size: letter; margin: 0.5in; }\` — declare this at the top of the <style> block.
+
+Typography hierarchy:
+- Section eyebrow (e.g. "ADG · EXECUTIVE SUMMARY"): Inter, 10pt, small caps, letter-spacing 0.18em, color gold #c9a961.
+- Section title (e.g. "A market-driven look at value."): Cormorant Garamond italic, 32–36pt, line-height 1.1, color navy #0a2540. Mix italic serif words with sans-serif words for emphasis only on the cover title and section-five title.
+- Section subtitle: Inter, 13pt, color #555.
+- Body paragraph: Inter, 11pt, line-height 1.55, color #1a1a1a, paragraph spacing 8pt.
+- Strong/key terms in body: <strong> rendered semibold navy #0a2540 (NOT black bold).
+
+Cover page (navy #0a2540 full bleed):
+- Top: "${TEAM_HEADER}" small caps gold 11pt, letter-spacing 0.2em, centered or top-left.
+- Hero name: 64–72pt, "${agent.name.split(' ')[0]}" in Inter regular white, surname in Cormorant Garamond italic gold #c9a961, period included.
+- Role line directly below: small caps white 11pt, letter-spacing 0.18em.
+- Thin 1px gold divider 80px wide.
+- Title block: "PROPERTY VALUATION REPORT" small caps white 14pt + "A Confidential Opinion of Value." mixed white sans + gold serif italic, 22pt.
+- Subject address: street line Cormorant Garamond italic white 26pt; "City, State Zip" Inter white 13pt; "Municipality · School District" small caps gold 10pt.
+- Stat block: single row, 4–5 stats, each stat = NUMBER on top (Cormorant Garamond italic white 32pt) + LABEL below (small caps gold 10pt, letter-spacing 0.18em). Show baths as a single decimal (2.5 BATHROOMS). NEVER use slash format.
+- Bottom area: "Prepared by ${agent.name}, ${agent.title}" + report date, both Inter 10pt off-white, separated by a thin gold rule.
+
+Recommended List Price block (Executive Summary):
+- Navy #0a2540 background, white text.
+- Eyebrow: "RECOMMENDED LIST PRICE · {scenario name}" small caps gold 10pt.
+- Price: Cormorant Garamond italic 56pt white, the dollar sign smaller than the digits.
+- Sub-line: "Defensible bracket: $X – $Y · As-Is Floor: $Z" 11pt Inter white.
+- 24pt internal padding, full-width within the page margins.
+
+Property data table (Subject Property):
+- 3-column grid, 2 rows, each cell shows LABEL (small caps gold 9pt) on top and VALUE (Inter 12pt navy) below.
+- Thin #e5e1d6 dividers between cells.
+- No outer border, no background.
+
+Comparable Sales table:
+- Header row: navy #0a2540 background, white small caps 10pt, padding 8pt 10pt.
+- Body rows: alternating #faf6ec / #ffffff. 10pt Inter regular. Cell padding 10pt 10pt.
+- Right-align numeric columns (price, $/sqft, sqft); left-align address & notes.
+- Anchor comp row: thin gold left border + "ANCHOR COMP" gold pill above the address.
+- Top-of-market reference row: cream pill "TOP-OF-MARKET REF".
+- page-break-inside: avoid on the whole <table>.
+
+Scenario cards (Section 5):
+- Each scenario is its own card, page-break-inside: avoid, margin-bottom 24pt.
+- Card layout: left column (40%) shows price + range + $/sqft; right column (60%) shows the narrative paragraph.
+- As-Is card: thin navy left border 3pt, white bg.
+- Recommended card: white bg with a subtle gold #c9a961 left border 3pt and a "RECOMMENDED STARTING POINT" pill (gold bg, navy text, small caps) in the top-right of the card header.
+- Top-of-Market card: thin navy left border 3pt, white bg. Below the body, include a separate "CEILING CAUTION" callout box (see below).
+- Price display in each card: Cormorant Garamond italic 36pt navy.
+- "Range:" line 11pt navy, "$/sqft" line 11pt muted #6b6b6b.
+
+Callout boxes — three variants, all with page-break-inside: avoid:
+- Navy box ("Important Market Context"): bg #0a2540, body text white, eyebrow gold small caps. Used for the single highest-signal callout per report.
+- Cream box ("Comp Pool Discipline", "Confidence Note"): bg #faf6ec, body text #1a1a1a navy, gold eyebrow.
+- Warning box ("Ceiling Caution"): bg #faf6ec with a 3pt left border in burnt-gold #b08841, body text #1a1a1a.
+- All callouts: 18pt internal padding, gold eyebrow line in small caps.
+
+Page footer (every section page 2-7):
+- 1px top border #e5e1d6, 12pt padding-top.
+- Left side: "${upperName} · ${agent.title}" Inter 9pt navy semibold.
+- Right side: contact line "${agent.phone} · ${agent.email}" Inter 9pt navy.
+- Positioned at bottom of the section's printable area.
+
+Closing section (A Note from ${firstName}):
+- Two-column layout: left column 220px wide for the headshot image, right column flex-1 for the content.
+- Content right column: eyebrow "ADG · A NOTE FROM ${firstName.toUpperCase()}", title "Thank you." (Cormorant Garamond italic 40pt navy with "you" in lighter weight), agent name line, bio paragraph(s), contact block in a cream callout.
+- Below the two columns: full-width navy disclaimer band at the bottom of the page.
+
+Self-review checklist — before returning HTML, mentally verify every item:
+1. Document starts with <!DOCTYPE html> and ends with </html>. No markdown fences anywhere.
+2. <style> block in <head> includes @page { size: letter; margin: 0.5in; } and Google Fonts import for Cormorant Garamond + Inter.
+3. Cover page is FULL NAVY (#0a2540) edge-to-edge. No white inner panel.
+4. Stat block on cover shows "2.5 BATHROOMS" format (single decimal, large number above small label). No slash, no "FULL/HALF" wording.
+5. Each scenario card in Section 5 carries inline style="page-break-inside: avoid; break-inside: avoid;" (or class with those rules).
+6. Comp table has page-break-inside: avoid on the <table>.
+7. Every callout box has page-break-inside: avoid.
+8. Walk-Through Priorities list is wrapped in a single container with page-break-inside: avoid.
+9. Section 7 includes the headshot placeholder <img src="__AGENT_HEADSHOT_DATA_URL__" ...> verbatim (only present if the payload includes an agent headshot).
+10. No min-height, vh units, or aspect-ratio anywhere; no spacer divs padding sections to full pages.
+11. Every section page 2-7 carries the agent footer line.
+12. All comp prices, $/sqft, and scenario figures come from the payload — no invented data.
+
 Don't: propose marketing/listing prep/buyer-presentation content (out of scope) · pad with generic real estate advice · confuse this with a CMA (different conventions) · invent data not in the input · wrap output in markdown code fences · invent biographical details about the agent that aren't in the payload.${headshotInstruction}`;
 }
 

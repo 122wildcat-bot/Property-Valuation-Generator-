@@ -68,11 +68,10 @@ Return ONLY the HTML document. Begin with <!DOCTYPE html> and end with </html>. 
   const t0 = Date.now();
   const response = await anthropic.messages.create({
     model,
-    // The full 7-section report runs ~10-13K tokens. 16000 gives comfortable
-    // headroom for reports with the max 8 comps + long condition notes;
-    // anything tighter and Claude gets truncated mid-document and the
-    // closing sections never render.
-    max_tokens: 16000,
+    // 24K gives comfortable headroom for top-notch reports with 8 comps,
+    // long condition notes, and fully fleshed-out narrative paragraphs.
+    // Sonnet 4.6 supports up to 64K output, so this is well within limits.
+    max_tokens: 24000,
     system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: userMessage }],
   });
