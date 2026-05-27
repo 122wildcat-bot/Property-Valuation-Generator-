@@ -2,7 +2,12 @@ import Anthropic from "@anthropic-ai/sdk";
 import { buildSystemPrompt } from "./system-prompt";
 import type { ValuationInput } from "./schema";
 
-const DEFAULT_MODEL = "claude-opus-4-7";
+// Sonnet 4.6 is significantly faster than Opus on long-form generation
+// while producing equally good template-following HTML for this report
+// shape. Opus runs were consistently 60-120s longer end-to-end and
+// pushing PVRG past MVE's timeout cap. Override via env if you want
+// Opus quality on a one-off basis.
+const DEFAULT_MODEL = "claude-sonnet-4-6";
 
 let client: Anthropic | null = null;
 
@@ -45,12 +50,21 @@ Return ONLY the HTML document. Begin with <!DOCTYPE html> and end with </html>. 
   // (back-to-back report regenerations, retries) a meaningful speedup
   // and a 90% cost discount on the cached tokens.
   const systemPrompt = buildSystemPrompt(input.agent);
+  const t0 = Date.now();
   const response = await anthropic.messages.create({
     model,
-    max_tokens: 12000,
+    max_tokens: 10000,
     system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: userMessage }],
   });
+  const elapsedMs = Date.now() - t0;
+  const u = response.usage;
+  console.log(
+    `[claude] model=${model} elapsed=${elapsedMs}ms ` +
+      `input=${u.input_tokens} output=${u.output_tokens} ` +
+      `cache_read=${u.cache_read_input_tokens ?? 0} ` +
+      `cache_create=${u.cache_creation_input_tokens ?? 0}`,
+  );
 
   const text = response.content
     .filter((b): b is Anthropic.TextBlock => b.type === "text")
