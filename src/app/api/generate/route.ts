@@ -71,7 +71,16 @@ export async function POST(req: NextRequest) {
   const tPdf = Date.now();
   let pdf: Buffer;
   try {
-    pdf = await renderHtmlToPdf(html);
+    const agent = parsed.data.agent;
+    const footer = {
+      left: agent
+        ? `${agent.name.toUpperCase()} · ${agent.title ?? "REALTOR®"}`
+        : "ADAM DRUCK · REALTOR – TEAM LEAD",
+      right: agent
+        ? [agent.phone, agent.email].filter(Boolean).join(" · ")
+        : "717-487-2579 · yourrealtoradamd@gmail.com",
+    };
+    pdf = await renderHtmlToPdf(html, footer);
   } catch (err) {
     const message = err instanceof Error ? err.message : "PDF rendering failed";
     console.error(`[generate] pdf failed after ${Date.now() - tPdf}ms: ${message}`);
