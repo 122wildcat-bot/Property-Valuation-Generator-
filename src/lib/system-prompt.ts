@@ -33,12 +33,9 @@ export function buildSystemPrompt(agentInput?: AgentBrand): string {
     ...(agentInput ?? {}),
   };
   const firstName = agent.name.trim().split(/\s+/)[0] || agent.name;
-  const upperName = agent.name.trim().toUpperCase();
-  const contactInline = [agent.phone, agent.email].filter(Boolean).join(" · ");
   const contactBlock = [agent.phone, agent.email, TEAM_WEBSITE, TEAM_SOCIAL]
     .filter(Boolean)
     .join(" · ");
-  const pageFooter = `${upperName} · ${agent.title} ${contactInline}`;
   const licenseClause = agent.license_number ? `${agent.license_number} · ` : "";
 
   const headshotInstruction = agent.headshot_data_url
@@ -94,16 +91,24 @@ Valuation conventions:
 - Anchor every scenario to a specific comp ("anchored to 44 N Clinton's trajectory", "applying 1626 W Philadelphia's $/sqft and adjusting for the missing garage").
 
 Brand & layout:
-- Cover page: navy #0a2540 fills the ENTIRE page (no white inner panel). All cover text in white or gold #c9a961.
+- Cover page: navy #0a2540. The cover container MUST fill the full printable page height — set min-height: 9.4in on it so the navy reaches the bottom of the page (no cream band below it). All cover text in white or gold #c9a961. This is the ONLY element allowed to use min-height.
 - All other sections (2–7): warm off-white #faf8f4 background, body text #1a1a1a, navy headers, gold accents.
 - Serif italic for section titles: 'Cormorant Garamond' from Google Fonts.
 - Body: 'Inter' from Google Fonts. Body size 11pt, line-height 1.5. Tight section spacing (24–32pt between blocks, not 60+).
-- Each section (2–6) starts on a fresh page via page-break-before: always. Section 7 (Note from ${firstName}) also starts on a fresh page.
-- CRITICAL page-break-inside rules — apply page-break-inside: avoid AND break-inside: avoid to every one of: each scenario card in Section 5 (so the Top-of-Market header never orphans from its body), the comp table in Section 4, the Walk-Through Priorities block in Section 6, every callout box ("Important Market Context", "Ceiling Caution", "Comp Pool Discipline", "Confidence Note").
-- Do NOT pad short sections with min-height, large bottom margins, or empty spacer divs trying to fill the page. If a section is shorter than the page, that's fine — the trailing whitespace is a natural consequence of page-break-before. Never use min-height: 100vh, vh units, or aspect-ratio tricks on section containers.
+
+PAGINATION — eliminating dead space is the #1 layout priority. Read carefully:
+- The body of the report (sections 2–6) FLOWS as one continuous document. Do NOT put page-break-before: always or page-break-after: always on these sections. Forcing every section onto its own fresh page is what creates half-empty pages and blank trailing pages — that is the single biggest problem to avoid. Let sections flow directly into one another; the print engine paginates automatically and fills each page.
+- There are EXACTLY TWO forced page breaks in the entire document: (a) page-break-after: always on the cover page only, and (b) page-break-before: always on the closing "A Note from ${firstName}" section only. No other element may carry page-break-before or page-break-after: always. Do NOT wrap each section in its own full-page container.
+- Apply page-break-inside: avoid AND break-inside: avoid to these atomic blocks so they never split across a page boundary: the comp table (keep the whole table together; if it cannot fit, it may break between rows but never mid-row), each individual scenario card, every callout box (Important Market Context, Ceiling Caution, Comp Pool Discipline, Confidence Note), the Recommended List Price block, the property data grid, the Walk-Through Priorities list, and the closing two-column block.
+- Apply page-break-after: avoid to every section header (eyebrow + title + subtitle) so a header never strands alone at the bottom of a page with its body on the next.
+- NEVER emit empty <div>s, trailing spacer elements, <br> stacks, or a page-break on the final element — these produce fully blank pages at the end of the PDF.
+- Forbidden everywhere except the cover: min-height, height set to viewport units, vh/vw units, aspect-ratio. Do not use them to pad sections.
+
+CONTRAST (critical — a recurring bug): any text sitting on a navy #0a2540 background — including <strong> emphasis, dollar figures, and inline highlighted terms — MUST be white #ffffff or gold #c9a961. NEVER render navy or dark text on a navy background; it becomes invisible. Specifically: inside the navy "Recommended List Price" block and the navy "Important Market Context" callout, every character including bolded numbers must be white or gold. On cream/white backgrounds, body text is #1a1a1a and emphasis is navy. Always keep a strong contrast ratio.
+
 - ADG monogram in gold in section headers.
-- Section-page footer (every section): "${pageFooter}"
-- Editorial aesthetic. Tight, dense, confident layout. Not Zillow, not corporate template — closer to a private wealth report.
+- Do NOT add a per-section footer line — a running footer with the agent's name and contact is added automatically to every physical page by the renderer. Adding your own would duplicate it and waste vertical space.
+- Editorial aesthetic. Tight, dense, confident layout that FILLS each page. Not Zillow, not corporate template — closer to a private wealth report.
 
 Visual specifications (apply these consistently, no improvising):
 
@@ -160,12 +165,9 @@ Callout boxes — three variants, all with page-break-inside: avoid:
 - Cream box ("Comp Pool Discipline", "Confidence Note"): bg #faf6ec, body text #1a1a1a navy, gold eyebrow.
 - Warning box ("Ceiling Caution"): bg #faf6ec with a 3pt left border in burnt-gold #b08841, body text #1a1a1a.
 - All callouts: 18pt internal padding, gold eyebrow line in small caps.
+- Navy box ("Important Market Context"): bg #0a2540 — ALL its text (body, bold terms, dollar figures) must be white #ffffff or gold #c9a961. Never navy/dark text here or it disappears.
 
-Page footer (every section page 2-7):
-- 1px top border #e5e1d6, 12pt padding-top.
-- Left side: "${upperName} · ${agent.title}" Inter 9pt navy semibold.
-- Right side: contact line "${agent.phone} · ${agent.email}" Inter 9pt navy.
-- Positioned at bottom of the section's printable area.
+Page footer: do NOT build one. A running footer (agent name + contact) is added to every physical page automatically by the renderer. Anything you add yourself duplicates it.
 
 Closing section (A Note from ${firstName}):
 - Two-column layout: left column 220px wide for the headshot image, right column flex-1 for the content.
@@ -174,17 +176,18 @@ Closing section (A Note from ${firstName}):
 
 Self-review checklist — before returning HTML, mentally verify every item:
 1. Document starts with <!DOCTYPE html> and ends with </html>. No markdown fences anywhere.
-2. <style> block in <head> includes @page { size: letter; margin: 0.5in; } and Google Fonts import for Cormorant Garamond + Inter.
-3. Cover page is FULL NAVY (#0a2540) edge-to-edge. No white inner panel.
+2. <style> block in <head> includes Google Fonts import for Cormorant Garamond + Inter.
+3. Cover page is full navy (#0a2540) with min-height: 9.4in so the navy fills the whole page (no cream band at the bottom).
 4. Stat block on cover shows "2.5 BATHROOMS" format (single decimal, large number above small label). No slash, no "FULL/HALF" wording.
-5. Each scenario card in Section 5 carries inline style="page-break-inside: avoid; break-inside: avoid;" (or class with those rules).
-6. Comp table has page-break-inside: avoid on the <table>.
-7. Every callout box has page-break-inside: avoid.
-8. Walk-Through Priorities list is wrapped in a single container with page-break-inside: avoid.
-9. Section 7 includes the headshot placeholder <img src="__AGENT_HEADSHOT_DATA_URL__" ...> verbatim (only present if the payload includes an agent headshot).
-10. No min-height, vh units, or aspect-ratio anywhere; no spacer divs padding sections to full pages.
-11. Every section page 2-7 carries the agent footer line.
-12. All comp prices, $/sqft, and scenario figures come from the payload — no invented data.
+5. ONLY two forced page breaks exist: page-break-after:always on the cover, page-break-before:always on the closing section. NO section 2–6 has page-break-before/after:always. Sections flow continuously.
+6. Atomic blocks (comp table, each scenario card, every callout box, Recommended List Price block, property data grid, Walk-Through list, closing two-column block) each carry page-break-inside: avoid + break-inside: avoid.
+7. Section headers carry page-break-after: avoid so none strand at a page bottom.
+8. No empty <div>s, spacer divs, <br> stacks, or trailing page-breaks that would create blank pages at the end of the PDF.
+9. CONTRAST: every character inside a navy box (Recommended List Price block, Important Market Context navy callout) is white or gold — no invisible navy-on-navy text. Verify every dollar figure and bold term in those boxes is light-colored.
+10. min-height/vh/vw/aspect-ratio appear ONLY on the cover container, nowhere else.
+11. Did NOT add any per-section footer (the renderer adds the running footer automatically).
+12. Section 7 includes the headshot placeholder <img src="__AGENT_HEADSHOT_DATA_URL__" ...> verbatim (only if the payload includes an agent headshot).
+13. All comp prices, $/sqft, and scenario figures come from the payload — no invented data.
 
 Don't: propose marketing/listing prep/buyer-presentation content (out of scope) · pad with generic real estate advice · confuse this with a CMA (different conventions) · invent data not in the input · wrap output in markdown code fences · invent biographical details about the agent that aren't in the payload.${headshotInstruction}`;
 }

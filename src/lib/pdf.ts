@@ -35,7 +35,18 @@ async function getBrowser(): Promise<Browser> {
   return browser;
 }
 
-export async function renderHtmlToPdf(html: string): Promise<Buffer> {
+export interface PdfFooter {
+  left: string;
+  right: string;
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string,
+  );
+}
+
+export async function renderHtmlToPdf(html: string, footer?: PdfFooter): Promise<Buffer> {
   const tBrowser = Date.now();
   const browser = await getBrowser();
   const page = await browser.newPage();
@@ -50,12 +61,24 @@ export async function renderHtmlToPdf(html: string): Promise<Buffer> {
     await page.emulateMediaType("print");
     const contentMs = Date.now() - tContent;
 
+    // Running footer on every physical page, rendered by Puppeteer in the
+    // bottom margin. We do NOT use preferCSSPageSize so Puppeteer owns the
+    // page size + margins and reliably reserves room for the footer. The
+    // footer template renders in an isolated context (no page fonts), so
+    // we use a generic sans-serif stack.
+    const footerTemplate = footer
+      ? `<div style="width:100%;box-sizing:border-box;font-size:7.5px;font-family:Helvetica,Arial,sans-serif;color:#8a8a8a;padding:0 0.5in;display:flex;justify-content:space-between;">` +
+        `<span>${escapeHtml(footer.left)}</span><span>${escapeHtml(footer.right)}</span></div>`
+      : "<div></div>";
+
     const tPdf = Date.now();
     const pdf = await page.pdf({
       format: "letter",
       printBackground: true,
-      preferCSSPageSize: true,
-      margin: { top: "0.5in", right: "0.5in", bottom: "0.5in", left: "0.5in" },
+      displayHeaderFooter: Boolean(footer),
+      headerTemplate: "<div></div>",
+      footerTemplate,
+      margin: { top: "0.5in", right: "0.5in", bottom: footer ? "0.6in" : "0.5in", left: "0.5in" },
     });
     const pdfMs = Date.now() - tPdf;
     console.log(`[puppeteer] browser_ready=${browserMs}ms set_content=${contentMs}ms pdf=${pdfMs}ms`);
