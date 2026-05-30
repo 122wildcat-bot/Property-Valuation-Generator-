@@ -1,0 +1,38 @@
+# Auto-merge pull requests across the ADG fleet.
+#
+# A non-draft PR merges automatically once it is mergeable and any REQUIRED
+# status checks pass. If the repo has no required checks (the current state),
+# it merges right away. Draft PRs are skipped.
+#
+# To make a CI job actually BLOCK a merge, add it to branch protection as a
+# required status check — native auto-merge will then wait for it.
+name: Auto-merge
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+  administration: write
+
+jobs:
+  auto-merge:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Allow auto-merge on this repo (best effort)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api -X PATCH "repos/${{ github.repository }}" -f allow_auto_merge=true || true
+      - name: Merge when green
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Arm GitHub's native auto-merge (waits for required checks). If it
+          # cannot be armed because nothing is required, merge immediately.
+          gh pr merge "$PR" --repo "$REPO" --squash --auto \
+            || gh pr merge "$PR" --repo "$REPO" --squash
